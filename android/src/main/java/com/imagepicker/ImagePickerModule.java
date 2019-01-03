@@ -210,6 +210,7 @@ public class ImagePickerModule extends ReactContextBaseJavaModule
     this.launchCamera(this.options, this.callback);
   }
 
+ 
   // NOTE: Currently not reentrant / doesn't support concurrent requests
   @ReactMethod
   public void launchCamera(final ReadableMap options, final Callback callback)
@@ -256,20 +257,27 @@ public class ImagePickerModule extends ReactContextBaseJavaModule
       cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
 
       final File original = createNewFile(reactContext, this.options, false);
-      imageConfig = imageConfig.withOriginalFile(original);
 
-      if (imageConfig.original != null) {
-        cameraCaptureURI = RealPathUtil.compatUriFromFile(reactContext, imageConfig.original);
-      }else {
+      //Fix Issue NullPointerException: Attempt to invoke virtual method 'java.lang.String java.io.File.getAbsolutePath()' on a null object reference
+      if (original == null) {
         responseHelper.invokeError(callback, "Couldn't get file path for photo");
         return;
+      } else {
+        imageConfig = imageConfig.withOriginalFile(original);
+
+        if (imageConfig.original != null) {
+          cameraCaptureURI = RealPathUtil.compatUriFromFile(reactContext, imageConfig.original);
+        }else {
+          responseHelper.invokeError(callback, "Couldn't get file path for photo");
+          return;
+        }
+        if (cameraCaptureURI == null)
+        {
+          responseHelper.invokeError(callback, "Couldn't get file path for photo");
+          return;
+        }
+        cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, cameraCaptureURI);
       }
-      if (cameraCaptureURI == null)
-      {
-        responseHelper.invokeError(callback, "Couldn't get file path for photo");
-        return;
-      }
-      cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, cameraCaptureURI);
     }
 
     if (cameraIntent.resolveActivity(reactContext.getPackageManager()) == null)
